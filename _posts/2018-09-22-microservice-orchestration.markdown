@@ -10,36 +10,36 @@ categories: beginner
 terms: 1
 ---
 
-In this tutorial we will learn about basic application containerization using Docker and running various components of an application as microservices.
-We will utilize [Docker Compose](https://docs.docker.com/compose/) for orchestration during the development.
-This tutorial is targeted for beginners who have the basic familiarity with Docker.
-If you are new to Docker, we recommend you check out [Docker for Beginners](/beginner-linux) tutorial first.
+In questo tutorial impareremo la containerizzazione di applicazioni di base usando Docker e eseguendo vari componenti di un'applicazione come microservizi.
+Utilizzeremo [Docker Compose] (https://docs.docker.com/compose/) per l'orchestrazione durante lo sviluppo.
+Questo tutorial è rivolto ai principianti che hanno familiarità di base con Docker.
+Se non conosci Docker, ti consigliamo di consultare prima il tutorial [Docker per principianti] (/ beginner-linux).
 
-We will start from a basic Python script that scrapes links from a given web page and gradually evolve it into a multi-service application stack.
-The demo code is available in the [Link Extractor](https://github.com/ibnesayeed/linkextractor) repo.
-The code is organized in steps that incrementally introduce changes and new concepts.
-After completion, the application stack will contain the following microservices:
+Inizieremo da uno script Python di base che raschia i collegamenti da una determinata pagina Web e lo evolve gradualmente in uno stack di applicazioni multi-servizio.
+Il codice demo è disponibile nel repository [Link Extractor] (https://github.com/ibnesayeed/linkextractor).
+Il codice è organizzato in passaggi che introducono in modo incrementale modifiche e nuovi concetti.
+Dopo il completamento, lo stack dell'applicazione conterrà i seguenti microservizi:
 
-* A web application written in PHP and served using Apache that takes a URL as the input and summarizes extracted links from it
-* The web application talks to an API server written in Python (and Ruby) that takes care of the link extraction and returns a JSON response
-* A Redis cache that is used by the API server to avoid repeated fetch and link extraction for pages that are already scraped
+* Un'applicazione Web scritta in PHP e pubblicata utilizzando Apache che accetta un URL come input e riepiloga i collegamenti estratti da esso
+* L'applicazione Web comunica con un server API scritto in Python (e Ruby) che si occupa dell'estrazione del collegamento e restituisce una risposta JSON
+* Una cache Redis utilizzata dal server API per evitare ripetute operazioni di recupero e estrazione dei collegamenti per le pagine già scartate
 
-The API server will only load the page of the input link from the web if it is not in the cache.
-The stack will eventually look like the figure below:
+Il server API caricherà la pagina del collegamento di input dal Web solo se non si trova nella cache.
+Lo stack alla fine apparirà come nella figura seguente:
 
-![A Microservice Architecture of the Link Extractor Application](/images/linkextractor-microservice-diagram.png)
+! [A Microservice Architecture dell'applicazione Link Extractor] (/ images / linkextractor-microservice-diagram.png)
 
-This tutorial was initially developed for a colloquium in the [Computer Science Department](https://odu.edu/compsci) of the [Old Dominion University](https://www.odu.edu/), Norfolk, Virginia. A [video recording](https://www.youtube.com/watch?v=Y_X0F2FgYm8), [presentation slides](https://www.slideshare.net/ibnesayeed/introducing-docker-application-containerization-service-orchestration), and a brief description of the talk can be found in [a blog post](https://ws-dl.blogspot.com/2017/12/2017-12-03-introducing-docker.html).
-
-
-> **Steps:**
-> * Table of contents
-> {:toc}
+Questo tutorial è stato inizialmente sviluppato per un colloquio nel [Dipartimento di Informatica] (https://odu.edu/compsci) della [Old Dominion University] (https://www.odu.edu/), Norfolk, Virginia. A [registrazione video] (https://www.youtube.com/watch?v=Y_X0F2FgYm8), [diapositive di presentazione] (https://www.slideshare.net/ibnesayeed/introducing-docker-application-containerization-service- orchestrazione) e una breve descrizione del discorso in [un post sul blog] (https://ws-dl.blogspot.com/2017/12/2017-12-03-introducing-docker.html).
 
 
-## Stage Setup
+> ** Passaggi: **
+> * Sommario
+> {: toc}
 
-Let's get started by first cloning the demo code repository, changing the working directory, and checking the `demo` branch out.
+
+## Preparazione ambiente
+
+Cominciamo prima clonando il repository di codice demo, cambiando la directory di lavoro e passando al branch `demo`.
 
 ```.term1
 git clone https://github.com/ibnesayeed/linkextractor.git
@@ -48,9 +48,9 @@ git checkout demo
 ```
 
 
-## Step 0: Basic Link Extractor Script
+## Passaggio 0: Script di estrazione dei collegamenti di base
 
-Checkout the `step0` branch and list files in it.
+Controlla il branch `step0` ed elenca i file al suo interno.
 
 ```.term1
 git checkout step0
@@ -62,10 +62,10 @@ tree
 ├── README.md
 └── linkextractor.py
 
-0 directories, 2 files
+0 directory, 2 file
 ```
 
-The `linkextractor.py` file is the interesting one here, so let's look at its contents:
+Il file `linkextractor.py` è quello interessante qui, quindi diamo un'occhiata al suo contenuto:
 
 ```.term1
 cat linkextractor.py
@@ -84,23 +84,23 @@ for link in soup.find_all("a"):
     print(link.get("href"))
 ```
 
-This is a simple Python script that imports three packages: `sys` from the standard library and two popular third-party packages `requests` and `bs4`.
-User-supplied command line argument (which is expected to be a URL to an HTML page) is used to fetch the page using the `requests` package, then parsed using the `BeautifulSoup`.
-The parsed object is then iterated over to find all the anchor elements (i.e., `<a>` tags) and print the value of their `href` attribute that contains the hyperlink.
+Questo è un semplice script Python che importa tre pacchetti: `sys` dalla libreria standard e due popolari pacchetti di terze parti` request` e `bs4`.
+L'argomento della riga di comando fornito dall'utente (che dovrebbe essere un URL per una pagina HTML) viene usato per recuperare la pagina usando il pacchetto `request`, quindi analizzato usando `BeautifulSoup`.
+L'oggetto analizzato viene quindi ripetuto per trovare tutti gli elementi di ancoraggio (ovvero tag <a> `) e stampare il valore del loro attributo` href` che contiene il collegamento ipertestuale.
 
-However, this seemingly simple script might not be the easiest one to run on a machine that does not meet its requirements.
-The `README.md` file suggests how to run it, so let's give it a try:
+Tuttavia, questo script apparentemente semplice potrebbe non essere il più semplice da eseguire su una macchina che non soddisfa i suoi requisiti.
+Il file `README.md` suggerisce come eseguirlo, quindi proviamo:
 
 ```.term1
 ./linkextractor.py http://example.com/
 ```
 
 ```
-bash: ./linkextractor.py: Permission denied
+bash: ./linkextractor.py: Autorizzazione negata
 ```
 
-When we tried to execute it as a script, we got the `Permission denied` error.
-Let's check the current permissions on this file:
+Quando abbiamo provato a eseguirlo come uno script, abbiamo ricevuto l'errore `Autorizzazione negata`.
+Controlliamo le autorizzazioni correnti su questo file:
 
 ```.term1
 ls -l linkextractor.py
@@ -110,8 +110,8 @@ ls -l linkextractor.py
 -rw-r--r--    1 root     root           220 Sep 23 16:26 linkextractor.py
 ```
 
-This current permission `-rw-r--r--` indicates that the script is not set to be executable.
-We can either change it by running `chmod a+x linkextractor.py` or run it as a Python program instead of a self-executing script as illustrated below:
+Questa autorizzazione corrente `-rw-r - r -` indica che lo script non è impostato per essere eseguibile.
+Possiamo cambiarlo eseguendo `chmod a + x linkextractor.py` oppure eseguirlo come un programma Python invece di uno script auto-eseguito come illustrato di seguito:
 
 ```.term1
 python linkextractor.py
@@ -124,24 +124,23 @@ Traceback (most recent call last):
 ImportError: No module named bs4
 ```
 
-Here we got the first `ImportError` message because we are missing the third-party package needed by the script.
-We can install that Python package (and potentially other missing packages) using one of the many techniques to make it work, but it is too much work for such a simple script, which might not be obvious for those who are not familiar with Python's ecosystem.
+Qui abbiamo ricevuto il primo messaggio `ImportError` perché ci manca il pacchetto di terze parti necessario allo script.
+Possiamo installare quel pacchetto Python (e potenzialmente altri pacchetti mancanti) usando una delle molte tecniche per farlo funzionare, ma è troppo lavoro per uno script così semplice, che potrebbe non essere ovvio per coloro che non hanno familiarità con l'ecosistema di Python .
 
-Depending on which machine and operating system you are trying to run this script on, what software is already installed, and how much access you have, you might face some of these potential difficulties:
+A seconda della macchina e del sistema operativo su cui stai tentando di eseguire questo script, su quale software è già installato e su quanto accesso hai, potresti incontrare alcune di queste potenziali difficoltà:
 
-* Is the script executable?
-* Is Python installed on the machine?
-* Can you install software on the machine?
-* Is `pip` installed?
-* Are `requests` and `beautifulsoup4` Python libraries installed?
+* Lo script è eseguibile?
+* Python è installato sulla macchina?
+* È possibile installare software sulla macchina?
+* `Pip` è installato?
+* Le librerie Python `request` e` beautifulsoup4` sono installate?
 
-This is where application containerization tools like Docker come in handy.
-In the next step we will try to containerize this script and make it easier to execute.
+È qui che gli strumenti di containerizzazione delle applicazioni come Docker sono utili.
+Nel prossimo passaggio cercheremo di containerizzare questo script e di semplificarne l'esecuzione.
 
+## Passaggio 1: Script estrattore di collegamenti containerizzato
 
-## Step 1: Containerized Link Extractor Script
-
-Checkout the `step1` branch and list files in it.
+Controlla il branch `step1` ed elenca i file al suo interno.
 
 ```.term1
 git checkout step1
@@ -157,8 +156,8 @@ tree
 0 directories, 3 files
 ```
 
-We have added one new file (i.e., `Dockerfile`) in this step.
-Let's look into its contents:
+Abbiamo aggiunto un nuovo file (ad esempio, `Dockerfile`) in questo passaggio.
+Diamo un'occhiata al suo contenuto:
 
 ```.term1
 cat Dockerfile
@@ -178,21 +177,21 @@ RUN        chmod a+x linkextractor.py
 ENTRYPOINT ["./linkextractor.py"]
 ```
 
-Using this `Dockerfile` we can prepare a Docker image for this script.
-We start from the official `python` Docker image that contains Python's run-time environment as well as necessary tools to install Python packages and dependencies.
-We then add some metadata as labels (this step is not essential, but is a good practice nonetheless).
-Next two instructions run the `pip install` command to install the two third-party packages needed for the script to function properly.
-We then create a working directory `/app`, copy the `linkextractor.py` file in it, and change its permissions to make it an executable script.
-Finally, we set the script as the entrypoint for the image.
+Usando questo `Dockerfile` possiamo preparare un'immagine Docker per questo script.
+Partiamo dall'immagine Docker `python` ufficiale che contiene l'ambiente runtime di Python e gli strumenti necessari per installare i pacchetti e le dipendenze di Python.
+Aggiungiamo quindi alcuni metadati come etichette (questo passaggio non è essenziale, ma è comunque una buona pratica).
+Le successive due istruzioni eseguono il comando `pip install` per installare i due pacchetti di terze parti necessari per il corretto funzionamento dello script.
+Quindi creiamo una directory di lavoro `/ app`, copiamo il file` linkextractor.py` in esso e cambiamo le sue autorizzazioni per renderlo uno script eseguibile.
+Infine, impostiamo lo script come punto di entrata per l'immagine.
 
-So far, we have just described how we want our Docker image to be like, but didn't really build one.
-So let's do just that:
+Finora, abbiamo appena descritto come vogliamo che la nostra immagine Docker sia simile, ma non ne abbiamo davvero creata una.
+Quindi facciamo solo questo:
 
 ```.term1
 docker image build -t linkextractor:step1 .
 ```
 
-This command should yield an output as illustrated below:
+Questo comando dovrebbe produrre un output come illustrato di seguito:
 
 ```
 Sending build context to Docker daemon  171.5kB
@@ -204,8 +203,8 @@ Successfully built 226196ada9ab
 Successfully tagged linkextractor:step1
 ```
 
-We have created a Docker image named `linkextractor:step1` based on the `Dockerfile` illustrated above.
-If the build was successful, we should be able to see it in the list of image:
+Abbiamo creato un'immagine Docker denominata `linkextractor: step1` basata sul` Dockerfile` illustrato sopra.
+Se la compilazione ha avuto esito positivo, dovremmo essere in grado di vederlo nell'elenco delle immagini:
 
 ```.term1
 docker image ls
@@ -217,20 +216,20 @@ linkextractor       step1               e067c677be37        2 seconds ago       
 python              3                   a9d071760c82        2 weeks ago         923MB
 ```
 
-This image should have all the necessary ingredients packaged in it to run the script anywhere on a machine that supports Docker.
-Now, let's run a one-off container with this image and extract links from some live web pages:
+Questa immagine dovrebbe contenere tutti gli ingredienti necessari in essa contenuti per eseguire lo script ovunque su una macchina che supporti Docker.
+Ora, eseguiamo un contenitore unico con questa immagine ed estraiamo i collegamenti da alcune pagine Web live:
 
 ```.term1
 docker container run -it --rm linkextractor:step1 http://example.com/
 ```
 
-This outputs a single link that is present in the simple [example.com](http://example.com/) web page:
+Questo genera un singolo link presente nella semplice pagina web [esempio.com] (http://esempio.com/):
 
 ```
 http://www.iana.org/domains/example
 ```
 
-Let's try it on a web page with more links in it:
+Proviamolo su una pagina web con più link al suo interno:
 
 ```.term1
 docker container run -it --rm linkextractor:step1 https://training.play-with-docker.com/
@@ -263,14 +262,14 @@ https://twitter.com/docker
 https://www.github.com/play-with-docker/play-with-docker.github.io
 ```
 
-This looks good, but we can improve the output.
-For example, some links are relative, we can convert them into full URLs and also provide the anchor text they are linked to.
-In the next step we will make these changes and some other improvements to the script.
+Sembra buono, ma possiamo migliorare l'output.
+Ad esempio, alcuni collegamenti sono relativi, possiamo convertirli in URL completi e fornire anche il testo di ancoraggio a cui sono collegati.
+Nel prossimo passaggio apporteremo queste modifiche e alcuni altri miglioramenti allo script.
 
 
-## Step 2: Link Extractor Module with Full URI and Anchor Text
+## Passaggio 2: collegamento del modulo di estrazione con URI completo e testo di ancoraggio
 
-Checkout the `step2` branch and list files in it.
+Controlla il branch `step2` ed elenca i file al suo interno.
 
 ```.term1
 git checkout step2
@@ -286,13 +285,13 @@ tree
 0 directories, 3 files
 ```
 
-In this step the `linkextractor.py` script is updated with the following functional changes:
+In questo passo lo script `linkextractor.py` viene aggiornato con le seguenti modifiche funzionali:
 
-* Paths are normalized to full URLs
-* Reporting both links and anchor texts
-* Usable as a module in other scripts
+* I percorsi sono normalizzati a URL completi
+* Segnalazione di collegamenti e testi di ancoraggio
+* Utilizzabile come modulo in altri script
 
-Let's have a look at the updated script:
+Diamo un'occhiata allo script aggiornato:
 
 ```.term1
 cat linkextractor.py
@@ -327,16 +326,16 @@ if __name__ == "__main__":
         print("[{}]({})".format(link["text"], link["href"]))
 ```
 
-The link extraction logic is abstracted into a function `extract_links` that accepts a URL as a parameter and returns a list of objects containing anchor texts and normalized hyperlinks.
-This functionality can now be imported into other scripts as a module (which we will utilize in the next step).
+La logica di estrazione dei collegamenti viene astratta in una funzione "extract_links" che accetta un URL come parametro e restituisce un elenco di oggetti contenenti testi di ancoraggio e collegamenti ipertestuali normalizzati.
+Questa funzionalità può ora essere importata in altri script come modulo (che utilizzeremo nel passaggio successivo).
 
-Now, let's build a new image and see these changes in effect:
+Ora costruiamo una nuova immagine e vediamo queste modifiche in vigore:
 
 ```.term1
 docker image build -t linkextractor:step2 .
 ```
 
-We have used a new tag `linkextractor:step2` for this image so that we don't overwrite the image from the `step0` to illustrate that they can co-exist and containers can be run using either of these images.
+Abbiamo usato un nuovo tag `linkextractor: step2` per questa immagine in modo da non sovrascrivere l'immagine da` step0` per illustrare che possono coesistere e che i contenitori possono essere eseguiti usando una di queste immagini.
 
 ```.term1
 docker image ls
@@ -349,7 +348,7 @@ linkextractor       step1               673d045a822f        About a minute ago  
 python              3                   a9d071760c82        2 weeks ago          923MB
 ```
 
-Running a one-off container using the `linkextractor:step2` image should now yield an improved output:
+L'esecuzione di un contenitore unico usando l'immagine `linkextractor: step2` dovrebbe ora produrre un output migliorato:
 
 ```.term1
 docker container run -it --rm linkextractor:step2 https://training.play-with-docker.com/
@@ -382,20 +381,20 @@ docker container run -it --rm linkextractor:step2 https://training.play-with-doc
 [[IMG]](https://www.github.com/play-with-docker/play-with-docker.github.io)
 ```
 
-Running a container using the previous image `linkextractor:step1` should still result in the old output:
+L'esecuzione di un contenitore usando l'immagine precedente `linkextractor: step1` dovrebbe comunque produrre il vecchio output:
 
 ```.term1
 docker container run -it --rm linkextractor:step1 https://training.play-with-docker.com/
 ```
 
-So far, we have learned how to containerize a script with its necessary dependencies to make it more portable.
-We have also learned how to make changes in the application and build different variants of Docker images that can co-exist.
-In the next step we will build a web service that will utilize this script and will make the service run inside a Docker container.
+Finora, abbiamo imparato a containerizzare uno script con le sue dipendenze necessarie per renderlo più portatile.
+Abbiamo anche imparato come apportare modifiche all'applicazione e creare diverse varianti di immagini Docker che possono coesistere.
+Nel passaggio successivo creeremo un servizio Web che utilizzerà questo script e renderà il servizio eseguito all'interno di un contenitore Docker.
 
 
-## Step 3: Link Extractor API Service
+## Passaggio 3: collegamento del servizio API di Extractor
 
-Checkout the `step3` branch and list files in it.
+Controlla il branch `step3` ed elenca i file al suo interno.
 
 ```.term1
 git checkout step3
@@ -413,15 +412,15 @@ tree
 0 directories, 5 files
 ```
 
-The following changes have been made in this step:
+In questo passaggio sono state apportate le seguenti modifiche:
 
-* Added a server script `main.py` that utilizes the link extraction module written in the last step
-* The `Dockerfile` is updated to refer to the `main.py` file instead
-* Server is accessible as a WEB API at `http://<hostname>[:<prt>]/api/<url>`
-* Dependencies are moved to the `requirements.txt` file
-* Needs port mapping to make the service accessible outside of the container (the `Flask` server used here listens on port `5000` by default)
+* Aggiunto uno script server `main.py` che utilizza il modulo di estrazione dei collegamenti scritto nell'ultimo passaggio
+* Il `Dockerfile` viene aggiornato per fare invece riferimento al file` main.py`
+* Il server è accessibile come API WEB su `http: // <nomehost> [: <prt>] / api / <url>`
+* Le dipendenze vengono spostate nel file `Requisiti.txt`
+* Necessita la mappatura delle porte per rendere accessibile il servizio all'esterno del contenitore (il server `Flask` ​​usato qui ascolta sulla porta` 5000` di default)
 
-Let's first look at the `Dockerfile` for changes:
+Diamo prima un'occhiata al `Dockerfile` per le modifiche:
 
 ```.term1
 cat Dockerfile
@@ -441,10 +440,10 @@ RUN        chmod a+x *.py
 CMD        ["./main.py"]
 ```
 
-Since we have started using `requirements.txt` for dependencies, we no longer need to run `pip install` command for individual packages.
-The `ENTRYPOINT` directive is replaced with the `CMD` and it is referring to the `main.py` script that has the server code it because we do not want to use this image for one-off commands now.
+Da quando abbiamo iniziato a usare `Requisiti.txt` per le dipendenze, non è più necessario eseguire il comando` pip install` per i singoli pacchetti.
+La direttiva `ENTRYPOINT` è sostituita da` CMD` e si riferisce allo script `main.py` che ha il codice del server perché non vogliamo usare questa immagine per comandi una tantum ora.
 
-The `linkextractor.py` module remains unchanged in this step, so let's look into the newly added `main.py` file:
+Il modulo `linkextractor.py` rimane invariato in questo passaggio, quindi diamo un'occhiata al file` main.py` appena aggiunto:
 
 ```.term1
 cat main.py
@@ -475,23 +474,23 @@ def api(url):
 app.run(host="0.0.0.0")
 ```
 
-Here, we are importing `extract_links` function from the `linkextractor` module and converting the returned list of objects into a JSON response.
+Qui, stiamo importando la funzione `extract_links` dal modulo` linkextractor` e stiamo convertendo la lista di oggetti restituiti in una risposta JSON.
 
-It's time to build a new image with these changes in place:
+È tempo di creare una nuova immagine con queste modifiche in atto:
 
 ```.term1
 docker image build -t linkextractor:step3 .
 ```
 
-Then run the container in detached mode (`-d` flag) so that the terminal is available for other commands while the container is still running.
-Note that we are mapping the port `5000` of the container with the `5000` of the host (using `-p 5000:5000` argument) to make it accessible from the host.
-We are also assigning a name (`--name=linkextractor`) to the container to make it easier to see logs and kill or remove the container.
+Quindi eseguire il contenitore in modalità staccata (flag `-d`) in modo che il terminale sia disponibile per altri comandi mentre il contenitore è ancora in esecuzione.
+Si noti che stiamo mappando la porta `5000` del contenitore con il` 5000` dell'host (usando l'argomento `-p 5000: 5000`) per renderlo accessibile dall'host.
+Stiamo anche assegnando un nome (`--name = linkextractor`) al contenitore per facilitare la visualizzazione dei registri e l'uccisione o la rimozione del contenitore.
 
 ```.term1
 docker container run -d -p 5000:5000 --name=linkextractor linkextractor:step3
 ```
 
-If things go well, we should be able to see the container being listed in `Up` condition:
+Se le cose vanno bene, dovremmo essere in grado di vedere il contenitore elencato nella condizione `Up`:
 
 ```.term1
 docker container ls
@@ -502,7 +501,7 @@ CONTAINER ID        IMAGE                 COMMAND             CREATED           
 d69c0150a754        linkextractor:step3   "./main.py"         9 seconds ago       Up 8 seconds0.0.0.0:5000->5000/tcp   linkextractor
 ```
 
-We can now make an HTTP request in the form `/api/<url>` to talk to this server and fetch the response containing extracted links:
+Ora possiamo fare una richiesta HTTP nel formato `/ api / <url>` per parlare con questo server e recuperare la risposta contenente i collegamenti estratti:
 
 ```.term1
 curl -i http://localhost:5000/api/http://example.com/
@@ -518,9 +517,9 @@ Date: Sun, 23 Sep 2018 20:52:56 GMT
 [{"href":"http://www.iana.org/domains/example","text":"More information..."}]
 ```
 
-Now, we have the API service running that accepts requests in the form `/api/<url>` and responds with a JSON containing hyperlinks and anchor texts of all the links present in the web page at give `<url>`.
+Ora, abbiamo il servizio API in esecuzione che accetta le richieste nel formato `/ api / <url>` e risponde con un JSON contenente collegamenti ipertestuali e testi di ancoraggio di tutti i collegamenti presenti nella pagina Web a dare `<url>`.
 
-Since the container is running in detached mode, so we can't see what's happening inside, but we can see logs using the name `linkextractor` we assigned to our container:
+Dal momento che il contenitore è in esecuzione in modalità distaccata, quindi non possiamo vedere cosa sta succedendo all'interno, ma possiamo vedere i log usando il nome `linkextractor` che abbiamo assegnato al nostro contenitore:
 
 ```.term1
 docker container logs linkextractor
@@ -536,20 +535,21 @@ docker container logs linkextractor
 172.17.0.1 - - [23/Sep/2018 20:52:56] "GET /api/http://example.com/ HTTP/1.1" 200 -
 ```
 
-We can see the messages logged when the server came up, and an entry of the request log when we ran the `curl` command.
-Now we can kill and remove this container:
+
+Possiamo vedere i messaggi registrati quando è arrivato il server e una voce del registro richieste quando abbiamo eseguito il comando `curl`.
+Ora possiamo uccidere e rimuovere questo contenitore:
 
 ```.term1
 docker container rm -f linkextractor
 ```
 
-In this step we have successfully ran an API service listening on port `5000`.
-This is great, but APIs and JSON responses are for machines, so in the next step we will run a web service with a human-friendly web interface in addition to this API service.
+In questo passaggio abbiamo eseguito con successo un servizio API in ascolto sulla porta `5000`.
+Questo è fantastico, ma le risposte API e JSON sono per le macchine, quindi nel prossimo passaggio eseguiremo un servizio web con un'interfaccia web a misura d'uomo in aggiunta a questo servizio API.
 
 
-## Step 4: Link Extractor API and Web Front End Services
+## Passaggio 4: Link Extractor API e Web Front End Services
 
-Checkout the `step4` branch and list files in it.
+Controlla il branch `step4` ed elenca i file al suo interno.
 
 ```.term1
 git checkout step4
@@ -571,23 +571,23 @@ tree
 2 directories, 7 files
 ```
 
-In this step the following changes have been made since the last step:
+In questo passaggio sono state apportate le seguenti modifiche dall'ultimo passaggio:
 
-* The link extractor JSON API service (written in Python) is moved in a separate `./api` folder that has the exact same code as in the previous step
-* A web front-end application is written in PHP under `./www` folder that talks to the JSON API
-* The PHP application is mounted inside the official `php:7-apache` Docker image for easier modification during the development
-* The web application is made accessible at `http://<hostname>[:<prt>]/?url=<url-encoded-url>`
-* An environment variable `API_ENDPOINT` is used inside the PHP application to configure it to talk to the JSON API server
-* A `docker-compose.yml` file is written to build various components and glue them together
+* Il servizio API JSON di estrazione link (scritto in Python) viene spostato in una cartella `. / Api` separata che ha lo stesso codice esatto del passaggio precedente
+* Un'applicazione Web front-end è scritta in PHP nella cartella `. / Www` che comunica con l'API JSON
+* L'applicazione PHP è montata all'interno dell'immagine Docker `php: 7-apache` ufficiale per una più facile modifica durante lo sviluppo
+* L'applicazione Web è resa accessibile su `http: // <nomehost> [: <prt>] /? Url = <url-encoded-url>`
+* Una variabile d'ambiente `API_ENDPOINT` viene utilizzata all'interno dell'applicazione PHP per configurarla per comunicare con il server API JSON
+* Un file `docker-compose.yml` è scritto per creare vari componenti e incollarli insieme
 
-In this step we are planning to run two separate containers, one for the API and the other for the web interface.
-The latter needs a way to talk to the API server.
-For the two containers to be able to talk to each other, we can either map their ports on the host machine and use that for request routing or we can place the containers in a single private network and access directly.
-Docker has an excellent support of networking and provides helpful commands to deal with networks.
-Additionally, in a Docker network containers identify themselves using their names as hostnames to avoid hunting for their IP addresses in the private network.
-However, we are not going to do any of this manually, instead we will be using Docker Compose to automate many of these tasks.
+In questo passaggio stiamo pianificando di eseguire due contenitori separati, uno per l'API e l'altro per l'interfaccia Web.
+Quest'ultimo ha bisogno di un modo per parlare con il server API.
+Per consentire ai due container di comunicare tra loro, possiamo mappare le loro porte sul computer host e utilizzarlo per il routing delle richieste oppure possiamo posizionare i container in una singola rete privata e accedervi direttamente.
+Docker ha un eccellente supporto di rete e fornisce comandi utili per gestire le reti.
+Inoltre, in una rete Docker i container si identificano usando i loro nomi come nomi host per evitare di cercare i loro indirizzi IP nella rete privata.
+Tuttavia, non eseguiremo alcuna operazione manualmente, ma utilizzeremo Docker Compose per automatizzare molte di queste attività.
 
-So let's look at the `docker-compose.yml` file we have:
+Diamo un'occhiata al file `docker-compose.yml` che abbiamo:
 
 ```.term1
 cat docker-compose.yml
@@ -612,24 +612,24 @@ services:
       - ./www:/var/www/html
 ```
 
-This is a simple YAML file that describes the two services `api` and `web`.
-The `api` service will use the `linkextractor-api:step4-python` image that is not built yet, but will be built on-demand using the `Dockerfile` from the `./api` directory.
-This service will be exposed on the port `5000` of the host.
+Questo è un semplice file YAML che descrive i due servizi `api` e` web`.
+Il servizio `api` userà l'immagine` linkextractor-api: step4-python` che non è ancora stata costruita, ma sarà costruita su richiesta usando il `Dockerfile` dalla directory`. / Api`.
+Questo servizio sarà esposto sulla porta `5000` dell'host.
 
-The second service named `web` will use official `php:7-apache` image directly from the DockerHub, that's why we do not have a `Dockerfile` for it.
-The service will be exposed on the default HTTP port (i.e., `80`).
-We will supply an environment variable named `API_ENDPOINT` with the value `http://api:5000/api/` to tell the PHP script where to connect to for the API access.
-Notice that we are not using an IP address here, instead, `api:5000` is being used because we will have a dynamic hostname entry in the private network for the API service matching its service name.
-Finally, we will bind mount the `./www` folder to make the `index.php` file available inside of the `web` service container at `/var/www/html`, which is the default web root for the Apache web server.
+Il secondo servizio chiamato `web` utilizzerà l'immagine` php: 7-apache` ufficiale direttamente da DockerHub, ecco perché non abbiamo un file Docker per esso.
+Il servizio sarà esposto sulla porta HTTP predefinita (cioè, `80`).
+Forniremo una variabile d'ambiente chiamata `API_ENDPOINT` con il valore` http: // api: 5000 / api / `per dire allo script PHP dove connettersi per l'accesso all'API.
+Si noti che qui non si utilizza un indirizzo IP, invece viene utilizzato `api: 5000` perché avremo una voce dinamica del nome host nella rete privata per il servizio API corrispondente al nome del servizio.
+Infine, assoceremo mount la cartella `. / Www` per rendere disponibile il file` index.php` all'interno del contenitore del servizio `web` in` / var / www / html`, che è la radice web predefinita per Apache server web.
 
-Now, let's have a look at the user-facing `www/index.php` file:
+Ora diamo un'occhiata al file `www / index.php` rivolto all'utente:
 
 ```.term1
 cat www/index.php
 ```
 
-This is a long file that mainly contains all the markup and styles of the page.
-However, the important block of code is in the beginning of the file as illustrated below:
+Questo è un file lungo che contiene principalmente tutto il markup e gli stili della pagina.
+Tuttavia, l'importante blocco di codice si trova all'inizio del file, come illustrato di seguito:
 
 ```php
 $api_endpoint = $_ENV["API_ENDPOINT"] ?: "http://localhost:5000/api/";
@@ -651,11 +651,11 @@ if(isset($_GET["url"]) && $_GET["url"] != "") {
 }
 ```
 
-The `$api_endpoint` variable is initialized with the value of the environment variable supplied from the `docker-compose.yml` file as `$_ENV["API_ENDPOINT"]` (otherwise falls back to a default value of `http://localhost:5000/api/`).
-The request is made using `file_get_contents` function that uses the `$api_endpoint` variable and user supplied URL from `$_GET["url"]`.
-Some analysis and transformations are performed on the received response that are later used in the markup to populate the page.
+La variabile `$ api_endpoint` è inizializzata con il valore della variabile d'ambiente fornita dal file` docker-compose.yml` come `$ _ENV [" API_ENDPOINT "]` (altrimenti ricade su un valore predefinito di `http: // localhost: 5000 / api / `).
+La richiesta viene fatta usando la funzione `file_get_contents` che usa la variabile` $ api_endpoint` e l'URL fornito dall'utente da `$ _GET [" url "]`.
+Alcune analisi e trasformazioni vengono eseguite sulla risposta ricevuta che vengono successivamente utilizzate nel markup per popolare la pagina.
 
-Let's bring these services up in detached mode using `docker-compose` utility:
+Portiamo questi servizi in modalità staccata usando l'utility `docker-compose`:
 
 ```.term1
 docker-compose up -d --build
@@ -680,9 +680,9 @@ Creating linkextractor_web_1 ... done
 Creating linkextractor_api_1 ... done
 ```
 
-This output shows that Docker Compose automatically created a network named `linkextractor_default`, pulled `php:7-apache` image from DockerHub, built `api:python` image using our local `Dockerfile`, and finally, spun two containers `linkextractor_web_1` and `linkextractor_api_1` that correspond to the two services we have defined in the YAML file above.
+Questo output mostra che Docker Compose ha creato automaticamente una rete chiamata `linkextractor_default`, ha estratto l'immagine` php: 7-apache` da DockerHub, ha creato l'immagine `api: python` usando il nostro` Dockerfile` locale e infine ha fatto girare due container `linkextractor_web_1` e `linkextractor_api_1` che corrispondono ai due servizi che abbiamo definito nel file YAML sopra.
 
-Checking for the list of running containers confirms that the two services are indeed running:
+Il controllo dell'elenco dei contenitori in esecuzione conferma che i due servizi sono effettivamente in esecuzione:
 
 ```.term1
 docker container ls
@@ -694,36 +694,36 @@ CONTAINER ID        IMAGE               COMMAND                  CREATED        
 5bc266b4e43d        linkextractor-api:step4-python   "./main.py"              3 minutes ago       Up 3 minutes        0.0.0.0:5000->5000/tcp   linkextractor_api_1
 ```
 
-We should now be able to talk to the API service as before:
+Ora dovremmo essere in grado di parlare con il servizio API come prima:
 
 ```.term1
 curl -i http://localhost:5000/api/http://example.com/
 ```
 
-To access the web interface [click to open the Link Extractor](/){:data-term=".term1"}{:data-port="80"}.
-Then fill the form with `https://training.play-with-docker.com/` (or any HTML page URL of your choice) and submit to extract links from it.
+Per accedere all'interfaccia Web [fare clic per aprire l'Estrattore link] (/) {: data-term = ". Term1"} {: data-port = "80"}.
+Quindi compila il modulo con `https: // training.play-with-docker.com /` (o qualsiasi URL della pagina HTML di tua scelta) e invia per estrarre i collegamenti da esso.
 
-We have just created an application with microservice architecture, isolating individual tasks in separate services as opposed to monolithic applications where everything is put together in a single unit.
-Microservice applications are relatively easier to scale, maintains, and move around.
-They also allow easy swapping of components with an equivalent service.
-More on that later.
+Abbiamo appena creato un'applicazione con architettura a microservizi, isolando le singole attività in servizi separati rispetto alle applicazioni monolitiche in cui tutto è riunito in un'unica unità.
+Le applicazioni di microservizi sono relativamente più semplici da ridimensionare, gestire e spostare.
+Consentono inoltre di sostituire facilmente i componenti con un servizio equivalente.
+Ne parleremo più avanti.
 
-Now, let's modify the `www/index.php` file to replace all occurrences of `Link Extractor` with `Super Link Extractor`:
+Ora, modifichiamo il file `www / index.php` per sostituire tutte le occorrenze di` Link Extractor` con `Super Link Extractor`:
 
 ```.term1
 sed -i 's/Link Extractor/Super Link Extractor/g' www/index.php
 ```
 
-Reloading the web interface of the application (or [clicking here](/){:data-term=".term1"}{:data-port="80"}) should now reflect this change in the title, header, and footer.
-This is happening because the `./www` folder is bind mounted inside of the container, so any changes made outside will reflect inside the container or the vice versa.
-This approach is very helpful in development, but in the production environment we would prefer our Docker images to be self-contained.
-Let's revert these changes now to clean the Git tracking:
+Il ricaricamento dell'interfaccia Web dell'applicazione (o [facendo clic qui] (/) {: data-term = ". Term1"} {: data-port = "80"}) dovrebbe ora riflettere questa modifica nel titolo, nell'intestazione e piè di pagina.
+Questo accade perché la cartella `. / Www` è montata all'interno del contenitore, quindi qualsiasi modifica apportata all'esterno si rifletterà all'interno del contenitore o viceversa.
+Questo approccio è molto utile nello sviluppo, ma nell'ambiente di produzione preferiremmo che le nostre immagini Docker fossero autonome.
+Ripristiniamo ora queste modifiche per pulire il tracciamento di Git:
 
 ```.term1
 git reset --hard
 ```
 
-Before we move on to the next step we need to shut these services down, but Docker Compose can help us take care of it very easily:
+Prima di passare al passaggio successivo, è necessario chiudere questi servizi, ma Docker Compose può aiutarci a gestirlo molto facilmente:
 
 ```.term1
 docker-compose down
@@ -737,12 +737,12 @@ Removing linkextractor_web_1 ... done
 Removing network linkextractor_default
 ```
 
-In the next step we will add one more service to our stack and will build a self-contained custom image for our web interface service.
+Nel passaggio successivo aggiungeremo un ulteriore servizio al nostro stack e creeremo un'immagine personalizzata autonoma per il nostro servizio di interfaccia web.
 
 
-## Step 5: Redis Service for Caching
+## Passaggio 5: Servizio Redis per la memorizzazione nella cache
 
-Checkout the `step5` branch and list files in it.
+Controlla il branch `step5` ed elenca i file al suo interno.
 
 ```.term1
 git checkout step5
@@ -765,14 +765,14 @@ tree
 2 directories, 8 files
 ```
 
-Some noticeable changes from the previous step are as following:
+Alcune modifiche evidenti rispetto al passaggio precedente sono le seguenti:
 
-* Another `Dockerfile` is added in the `./www` folder for the PHP web application to build a self-contained image and avoid live file mounting
-* A Redis container is added for caching using the official Redis Docker image
-* The API service talks to the Redis service to avoid downloading and parsing pages that were already scraped before
-* A `REDIS_URL` environment variable is added to the API service to allow it to connect to the Redis cache
+* Un altro `Dockerfile` viene aggiunto nella cartella`. / Www` per l'applicazione web PHP per creare un'immagine autonoma ed evitare il montaggio di file live
+* Un contenitore Redis viene aggiunto per la memorizzazione nella cache utilizzando l'immagine Docker Redis ufficiale
+* Il servizio API parla con il servizio Redis per evitare di scaricare e analizzare pagine che erano già state cancellate in precedenza
+* Una variabile d'ambiente `REDIS_URL` viene aggiunta al servizio API per consentirgli di connettersi alla cache Redis
 
-Let's first inspect the newly added `Dockerfile` under the `./www` folder:
+Ispezioniamo prima il `Dockerfile` appena aggiunto nella cartella`. / Www`:
 
 ```.term1
 cat www/Dockerfile
@@ -787,17 +787,17 @@ ENV        API_ENDPOINT="http://localhost:5000/api/"
 COPY       . /var/www/html/
 ```
 
-This is a rather simple `Dockerfile` that uses the official `php:7-apache` image as the base and copies all the files from the `./www` folder into the `/var/www/html/` folder of the image.
-This is exactly what was happening in the previous step, but that was bind mounted using a volume, while here we are making the code part of the self-contained image.
-We have also added the `API_ENDPOINT` environment variable here with a default value, which implicitly suggests that this is an important information that needs to be present in order for the service to function properly (and should be customized at run time with an appropriate value).
+Questo è un `Dockerfile` piuttosto semplice che usa l'immagine` php: 7-apache` ufficiale come base e copia tutti i file dalla cartella `. / Www` nella cartella` / var / www / html / `della Immagine.
+Questo è esattamente ciò che stava accadendo nel passaggio precedente, ma che è stato montato in un bind usando un volume, mentre qui stiamo rendendo il codice parte dell'immagine autonoma.
+Abbiamo anche aggiunto la variabile d'ambiente `API_ENDPOINT` con un valore predefinito, che suggerisce implicitamente che si tratta di un'informazione importante che deve essere presente affinché il servizio funzioni correttamente (e dovrebbe essere personalizzato in fase di esecuzione con un valore appropriato ).
 
-Next, we will look at the API server's `api/main.py` file where we are utilizing the Redis cache:
+Successivamente, esamineremo il file `api / main.py` del server API in cui stiamo utilizzando la cache Redis:
 
 ```.term1
 cat api/main.py
 ```
 
-The file has many lines, but the important bits are as illustrated below:
+Il file ha molte righe, ma i bit importanti sono come illustrato di seguito:
 
 ```py
 redis_conn = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
@@ -809,14 +809,14 @@ redis_conn = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
         redis.set(url, jsonlinks)
 ```
 
-This time the API service needs to know how to connect to the Redis instance as it is going to use it for caching.
-This information can be made available at run time using the `REDIS_URL` environment variable.
-A corresponding `ENV` entry is also added in the `Dockerfile` of the API service with a default value.
+Questa volta il servizio API deve sapere come connettersi all'istanza di Redis poiché la utilizzerà per la memorizzazione nella cache.
+Queste informazioni possono essere rese disponibili in fase di esecuzione usando la variabile d'ambiente `REDIS_URL`.
+Una voce `ENV` corrispondente viene aggiunta anche nel` Dockerfile` del servizio API con un valore predefinito.
 
-A `redis` client instance is created using the hostname `redis` (same as the name of the service as we will see later) and the default Redis port `6379`.
-We are first trying to see if a cache is present in the Redis store for a given URL, if not then we use the `extract_links` function as before and populate the cache for future attempts.
+Un'istanza client `redis` viene creata usando il nome host` redis` (uguale al nome del servizio come vedremo più avanti) e la porta Redis predefinita `6379`.
+In primo luogo stiamo provando a vedere se è presente una cache nell'archivio Redis per un determinato URL, in caso contrario utilizziamo la funzione `extract_links` come prima e popoliamo la cache per tentativi futuri.
 
-Now, let's look into the updated `docker-compose.yml` file:
+Ora, diamo un'occhiata al file aggiornato `docker-compose.yml`:
 
 ```.term1
 cat docker-compose.yml
@@ -844,9 +844,9 @@ services:
     image: redis
 ```
 
-The `api` service configuration largely remains the same as before, except the updated image tag and added environment variable `REDIS_URL` that points to the Redis service.
-For the `web` service, we are using the custom `linkextractor-web:step5-php` image that will be built using the newly added `Dockerfile` in the `./www` folder.
-We are no longer mounting the `./www` folder using the `volumes` config.
+La configurazione del servizio `api` rimane sostanzialmente la stessa di prima, ad eccezione del tag immagine aggiornato e della variabile d'ambiente aggiunta` REDIS_URL` che punta al servizio Redis.
+Per il servizio `web`, stiamo usando l'immagine personalizzata` linkextractor-web: step5-php` che sarà costruita usando il file Dockerfile appena aggiunto nella cartella `. / Www`.
+Non stiamo più montando la cartella `. / Www` usando la configurazione di` volumi`.
 Finally, a new service named `redis` is added that will use the official image from DockerHub and needs no specific configurations for now.
 This service is accessible to the Python API using its service name, the same way the API service is accessible to the PHP front-end service.
 
